@@ -1,0 +1,100 @@
+{
+  "properties": [
+    {
+      "name": "tiered-cache.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable two-level cache.",
+      "defaultValue": true
+    },
+    {
+      "name": "tiered-cache.local.provider",
+      "type": "java.lang.String",
+      "description": "Local cache provider (caffeine, guava, ehcache).",
+      "defaultValue": "caffeine"
+    },
+    {
+      "name": "tiered-cache.local.max-size",
+      "type": "java.lang.Long",
+      "description": "Maximum size of local cache.",
+      "defaultValue": 10000
+    },
+    {
+      "name": "tiered-cache.local.expire-after-write",
+      "type": "java.time.Duration",
+      "description": "Expire time after write for local cache.",
+      "defaultValue": "300s"
+    },
+    {
+      "name": "tiered-cache.local.expire-after-access",
+      "type": "java.time.Duration",
+      "description": "Expire time after access for local cache.",
+      "defaultValue": "600s"
+    },
+    {
+      "name": "tiered-cache.remote.provider",
+      "type": "java.lang.String",
+      "description": "Remote cache provider (redis, hazelcast, ignite).",
+      "defaultValue": "redis"
+    },
+    {
+      "name": "tiered-cache.remote.ttl",
+      "type": "java.time.Duration",
+      "description": "Default TTL for remote cache.",
+      "defaultValue": "3600s"
+    },
+    {
+      "name": "tiered-cache.remote.cluster-nodes",
+      "type": "java.lang.String",
+      "description": "Remote cache cluster nodes.",
+      "defaultValue": "localhost:6379"
+    },
+    {
+      "name": "tiered-cache.strategy.default-strategy",
+      "type": "java.lang.String",
+      "description": "Default cache strategy (local-first, remote-first, local-only, remote-only).",
+      "defaultValue": "local-first"
+    },
+    {
+      "name": "tiered-cache.sync.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable cache synchronization.",
+      "defaultValue": true
+    },
+    {
+      "name": "tiered-cache.sync.channel",
+      "type": "java.lang.String",
+      "description": "Cache synchronization channel name.",
+      "defaultValue": "cache-sync"
+    },
+    {
+      "name": "tiered-cache.security.encryption.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable cache encryption.",
+      "defaultValue": false
+    },
+    {
+      "name": "tiered-cache.security.encryption.algorithm",
+      "type": "java.lang.String",
+      "description": "Encryption algorithm.",
+      "defaultValue": "AES-256-GCM"
+    },
+    {
+      "name": "tiered-cache.security.access-control.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable access control.",
+      "defaultValue": false
+    },
+    {
+      "name": "tiered-cache.monitoring.metrics.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable metrics collection.",
+      "defaultValue": true
+    },
+    {
+      "name": "tiered-cache.monitoring.health-check.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable health check.",
+      "defaultValue": true
+    }
+  ]
+}

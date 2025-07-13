@@ -1,0 +1,47 @@
+tiered-cache:
+  enabled: true
+  local:
+    provider: caffeine
+    max-size: 10000
+    expire-after-write: 300s
+    expire-after-access: 600s
+    initial-capacity: 100
+    record-stats: true
+  remote:
+    provider: redis
+    ttl: 3600s
+    cluster-nodes: localhost:6379
+    password: 
+    database: 0
+    timeout: 5s
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 0
+      max-wait: -1ms
+  strategy:
+    default-strategy: local-first
+    write-mode: write-through
+    read-mode: read-through
+    consistency: eventual
+  sync:
+    enabled: true
+    channel: cache-sync
+    batch-size: 100
+    flush-interval: 1s
+  security:
+    encryption:
+      enabled: false
+      algorithm: AES-256-GCM
+      key: 
+    access-control:
+      enabled: false
+      default-policy: deny
+      rules: {}
+  monitoring:
+    metrics:
+      enabled: true
+      export-interval: 30s
+    health-check:
+      enabled: true
+      interval: 10s

@@ -1,0 +1,25 @@
+tiered-cache:
+  enabled: true
+  local:
+    provider: caffeine
+    max-size: 1000
+    expire-after-write: 60s
+    expire-after-access: 120s
+  remote:
+    provider: redis
+    ttl: 300s
+    cluster-nodes: localhost:6379
+  strategy:
+    default-strategy: local-first
+  sync:
+    enabled: false
+  security:
+    encryption:
+      enabled: false
+    access-control:
+      enabled: false
+  monitoring:
+    metrics:
+      enabled: false
+    health-check:
+      enabled: false
