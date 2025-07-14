@@ -128,16 +128,16 @@ public class CacheUsageExample {
         
         // 满足条件的查询 - 会被缓存
         System.out.println("满足条件的年龄范围查询 (25-35):");
-        var users1 = userService.getUsersByAgeRange(25, 35);
+        java.util.List<User> users1 = userService.getUsersByAgeRange(25, 35);
         System.out.println("结果数量: " + users1.size());
         
         System.out.println("\n再次执行相同查询:");
-        var users2 = userService.getUsersByAgeRange(25, 35);
+        java.util.List<User> users2 = userService.getUsersByAgeRange(25, 35);
         System.out.println("结果数量: " + users2.size());
         
         // 不满足条件的查询 - 不会被缓存
         System.out.println("\n不满足条件的年龄范围查询 (0-100):");
-        var users3 = userService.getUsersByAgeRange(0, 100);
+        java.util.List<User> users3 = userService.getUsersByAgeRange(0, 100);
         System.out.println("结果数量: " + users3.size());
     }
     

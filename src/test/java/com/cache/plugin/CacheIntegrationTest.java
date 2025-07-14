@@ -4,10 +4,16 @@ import com.cache.plugin.annotation.TieredCache;
 import com.cache.plugin.annotation.CacheStrategy;
 import com.cache.plugin.annotation.LocalCache;
 import com.cache.plugin.annotation.RemoteCache;
+import com.cache.plugin.config.TieredCacheAutoConfiguration;
 import com.cache.plugin.core.TieredCacheManager;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -16,7 +22,11 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 缓存集成测试
  */
-@SpringBootTest
+@SpringBootTest(classes = {
+    TieredCacheAutoConfiguration.class,
+    CacheIntegrationTest.TestConfiguration.class,
+    CacheIntegrationTest.TestService.class
+})
 @ActiveProfiles("test")
 public class CacheIntegrationTest {
     
@@ -74,6 +84,31 @@ public class CacheIntegrationTest {
         // 验证已清除
         String afterEvict = cacheManager.get(key, String.class, CacheStrategy.LOCAL_FIRST);
         assertNull(afterEvict);
+    }
+    
+    @Configuration
+    static class TestConfiguration {
+        
+        @Bean
+        @Primary
+        public MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+        
+        @Bean
+        @Primary
+        public org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate() {
+            // 创建一个Mock RedisTemplate用于测试
+            org.springframework.data.redis.core.RedisTemplate<String, Object> template = 
+                new org.springframework.data.redis.core.RedisTemplate<>();
+            // 设置一个Mock连接工厂，避免真实Redis连接
+            template.setConnectionFactory(org.mockito.Mockito.mock(
+                org.springframework.data.redis.connection.RedisConnectionFactory.class));
+            template.setKeySerializer(new org.springframework.data.redis.serializer.StringRedisSerializer());
+            template.setValueSerializer(new org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer());
+            template.afterPropertiesSet();
+            return template;
+        }
     }
     
     @Service

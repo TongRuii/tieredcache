@@ -99,26 +99,26 @@ public class CacheMetrics {
      */
     private void registerGauges() {
         // 命中率
-        Gauge.builder("cache.hit.rate")
+        Gauge.builder("cache.hit.rate", this, CacheMetrics::getHitRate)
                 .description("Cache hit rate")
-                .register(meterRegistry, this, CacheMetrics::getHitRate);
+                .register(meterRegistry);
                 
         // 本地命中率
-        Gauge.builder("cache.local.hit.rate")
+        Gauge.builder("cache.local.hit.rate", this, CacheMetrics::getLocalHitRate)
                 .description("Local cache hit rate")
                 .tag("level", "local")
-                .register(meterRegistry, this, CacheMetrics::getLocalHitRate);
+                .register(meterRegistry);
                 
         // 远程命中率
-        Gauge.builder("cache.remote.hit.rate")
+        Gauge.builder("cache.remote.hit.rate", this, CacheMetrics::getRemoteHitRate)
                 .description("Remote cache hit rate")
                 .tag("level", "remote")
-                .register(meterRegistry, this, CacheMetrics::getRemoteHitRate);
+                .register(meterRegistry);
                 
         // 总请求数
-        Gauge.builder("cache.requests.total")
+        Gauge.builder("cache.requests.total", this, CacheMetrics::getTotalRequests)
                 .description("Total cache requests")
-                .register(meterRegistry, this, CacheMetrics::getTotalRequests);
+                .register(meterRegistry);
     }
     
     /**

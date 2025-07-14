@@ -16,7 +16,9 @@ import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -154,11 +156,14 @@ public class RedisRemoteCache implements RemoteCache<String, Object> {
         try {
             Map<String, Object> result = new HashMap<>();
             if (keys != null && !keys.isEmpty()) {
-                Map<String, Object> values = redisTemplate.opsForValue().multiGet(keys);
+                List<String> keyList = new ArrayList<>(keys);
+                List<Object> values = redisTemplate.opsForValue().multiGet(keyList);
                 if (values != null) {
-                    for (Map.Entry<String, Object> entry : values.entrySet()) {
-                        if (entry.getValue() != null) {
-                            result.put(entry.getKey(), deserializeValue(entry.getValue()));
+                    for (int i = 0; i < keyList.size() && i < values.size(); i++) {
+                        String key = keyList.get(i);
+                        Object value = values.get(i);
+                        if (value != null) {
+                            result.put(key, deserializeValue(value));
                             hitCount.incrementAndGet();
                         } else {
                             missCount.incrementAndGet();

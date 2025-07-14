@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -31,7 +32,7 @@ public class TieredCacheAutoConfiguration {
      * 本地缓存配置
      */
     @Configuration
-    @ConditionalOnProperty(prefix = "two-level-cache.local", name = "provider", havingValue = "caffeine", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "tiered-cache.local", name = "provider", havingValue = "caffeine", matchIfMissing = true)
     @ConditionalOnClass(name = "com.github.benmanes.caffeine.cache.Caffeine")
     static class LocalCacheConfiguration {
         
@@ -46,7 +47,7 @@ public class TieredCacheAutoConfiguration {
      * 远程缓存配置
      */
     @Configuration
-    @ConditionalOnProperty(prefix = "two-level-cache.remote", name = "provider", havingValue = "redis", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "tiered-cache.remote", name = "enabled", havingValue = "true", matchIfMissing = true)
     @ConditionalOnClass(RedisTemplate.class)
     static class RemoteCacheConfiguration {
         
@@ -65,7 +66,7 @@ public class TieredCacheAutoConfiguration {
     @ConditionalOnMissingBean
     public TieredCacheManager twoLevelCacheManager(
             LocalCache<String, Object> localCache,
-            RemoteCache<String, Object> remoteCache,
+            @Autowired(required = false) RemoteCache<String, Object> remoteCache,
             TieredCacheProperties properties) {
         return new TieredCacheManager(localCache, remoteCache, properties);
     }
@@ -85,7 +86,7 @@ public class TieredCacheAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnClass(MeterRegistry.class)
-    @ConditionalOnProperty(prefix = "two-level-cache.monitoring.metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "tiered-cache.monitoring.metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
     public CacheMetrics cacheMetrics(MeterRegistry meterRegistry) {
         return new CacheMetrics(meterRegistry);
     }
@@ -95,7 +96,7 @@ public class TieredCacheAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "two-level-cache.sync", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "tiered-cache.sync", name = "enabled", havingValue = "true", matchIfMissing = true)
     public CacheSyncManager cacheSyncManager(
             LocalCache<String, Object> localCache,
             RemoteCache<String, Object> remoteCache,

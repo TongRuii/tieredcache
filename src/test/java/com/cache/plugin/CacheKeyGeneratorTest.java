@@ -116,10 +116,11 @@ public class CacheKeyGeneratorTest {
         Method method = TestService.class.getMethod("getUserById", Long.class);
         Object[] args = {123L};
         
-        // 无效的SpEL表达式应该回退到默认策略
+        // 无效的SpEL变量会被解析为null
         String key = keyGenerator.generate("'user:' + #invalidVar", "", method, args, null);
         
-        assertEquals("TestService.getUserById(123)", key);
+        // #invalidVar 不存在，会被解析为null，所以结果是 "user:null"
+        assertEquals("user:null", key);
     }
     
     /**

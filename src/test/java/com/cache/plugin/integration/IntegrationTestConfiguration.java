@@ -1,7 +1,10 @@
 package com.cache.plugin.integration;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -12,7 +15,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * 测试配置类
  */
 @TestConfiguration
-public class TestConfiguration {
+public class IntegrationTestConfiguration {
     
     /**
      * 配置Redis连接工厂（用于测试）
@@ -38,5 +41,14 @@ public class TestConfiguration {
         
         template.afterPropertiesSet();
         return template;
+    }
+    
+    /**
+     * 配置测试用的MeterRegistry
+     */
+    @Bean
+    @Primary
+    public MeterRegistry meterRegistry() {
+        return new SimpleMeterRegistry();
     }
 }

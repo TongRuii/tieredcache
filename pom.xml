@@ -19,7 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         
         <spring-boot.version>2.7.14</spring-boot.version>
-        <caffeine.version>3.1.8</caffeine.version>
+        <caffeine.version>2.9.3</caffeine.version>
         <redis.version>4.4.6</redis.version>
         <jackson.version>2.15.2</jackson.version>
         <micrometer.version>1.11.3</micrometer.version>

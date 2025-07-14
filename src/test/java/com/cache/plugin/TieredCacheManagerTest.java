@@ -12,6 +12,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -219,8 +221,13 @@ public class TieredCacheManagerTest {
     @Test
     void testMultiGet() {
         // 准备数据
-        Set<String> keys = Set.of("key1", "key2", "key3");
-        Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", "value2");
+        Set<String> keys = new HashSet<>();
+        keys.add("key1");
+        keys.add("key2");
+        keys.add("key3");
+        Map<String, Object> expectedResult = new HashMap<>();
+        expectedResult.put("key1", "value1");
+        expectedResult.put("key2", "value2");
         when(remoteCache.multiGet(keys)).thenReturn(expectedResult);
         
         // 执行测试
@@ -234,7 +241,9 @@ public class TieredCacheManagerTest {
     @Test
     void testMultiPut() {
         // 准备数据
-        Map<String, Object> keyValues = Map.of("key1", "value1", "key2", "value2");
+        Map<String, Object> keyValues = new HashMap<>();
+        keyValues.put("key1", "value1");
+        keyValues.put("key2", "value2");
         Duration ttl = Duration.ofMinutes(5);
         
         // 执行测试
