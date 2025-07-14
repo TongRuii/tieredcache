@@ -100,14 +100,34 @@ graph TB
     C --> D[缓存策略层]
     D --> E[基础设施层]
     
-    B1[@TieredCache<br/>@LocalCache<br/>@RemoteCache<br/>@CacheEvict] --> B
-    C1[TieredCacheManager<br/>CacheConfiguration] --> C
-    D1[本地缓存] --> D
-    D2[远程缓存] --> D
-    D3[数据源] --> D
-    E1[Caffeine] --> E
-    E2[Redis] --> E
-    E3[Database] --> E
+    subgraph "注解层"
+        B1["@TieredCache<br/>@LocalCache<br/>@RemoteCache<br/>@CacheEvict"]
+    end
+    
+    subgraph "管理层"
+        C1["TieredCacheManager<br/>CacheConfiguration"]
+    end
+    
+    subgraph "策略层"
+        D1[本地缓存]
+        D2[远程缓存]
+        D3[数据源]
+    end
+    
+    subgraph "基础设施层"
+        E1[Caffeine]
+        E2[Redis]
+        E3[Database]
+    end
+    
+    B1 -.-> B
+    C1 -.-> C
+    D1 -.-> D
+    D2 -.-> D
+    D3 -.-> D
+    E1 -.-> E
+    E2 -.-> E
+    E3 -.-> E
 ```
 
 </div>

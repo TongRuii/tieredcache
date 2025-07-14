@@ -100,14 +100,34 @@ graph TB
     C --> D[Cache Strategy Layer]
     D --> E[Infrastructure Layer]
     
-    B1[@TieredCache<br/>@LocalCache<br/>@RemoteCache<br/>@CacheEvict] --> B
-    C1[TieredCacheManager<br/>CacheConfiguration] --> C
-    D1[Local Cache] --> D
-    D2[Remote Cache] --> D
-    D3[Data Source] --> D
-    E1[Caffeine] --> E
-    E2[Redis] --> E
-    E3[Database] --> E
+    subgraph "Annotation Layer"
+        B1["@TieredCache<br/>@LocalCache<br/>@RemoteCache<br/>@CacheEvict"]
+    end
+    
+    subgraph "Manager Layer"
+        C1["TieredCacheManager<br/>CacheConfiguration"]
+    end
+    
+    subgraph "Strategy Layer"
+        D1[Local Cache]
+        D2[Remote Cache]
+        D3[Data Source]
+    end
+    
+    subgraph "Infrastructure Layer"
+        E1[Caffeine]
+        E2[Redis]
+        E3[Database]
+    end
+    
+    B1 -.-> B
+    C1 -.-> C
+    D1 -.-> D
+    D2 -.-> D
+    D3 -.-> D
+    E1 -.-> E
+    E2 -.-> E
+    E3 -.-> E
 ```
 
 </div>
