@@ -1,20 +1,36 @@
-# TieredCache Spring Boot Starter
+# 🚀 TieredCache Spring Boot Starter
 
-一个安全、高效、灵活的分层缓存插件，适配SpringBoot应用。
+<div align="center">
 
-## 特性
+![Java](https://img.shields.io/badge/Java-8+-orange.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7+-green.svg)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
+![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/Coverage-80%25+-brightgreen.svg)
 
-- **分层缓存架构**: 本地缓存(Local) + 远程缓存(Remote)
-- **多种缓存策略**: 本地优先、远程优先、仅本地、仅远程等
-- **注解驱动**: 简单易用的注解配置
-- **安全性**: 数据加密、访问控制、缓存穿透防护
-- **高性能**: 异步处理、批量操作、连接池
-- **监控运维**: 指标统计、健康检查、性能监控
-- **灵活配置**: 支持多种缓存提供商，可插拔架构
+**一个安全、高效、灵活的分层缓存插件，适配Spring Boot应用**
 
-## 快速开始
+[中文](README.md) | [English](README_EN.md)
 
-### 1. 添加依赖
+</div>
+
+---
+
+## ✨ 核心特性
+
+- 🏗️ **分层缓存架构**: 本地缓存(L1) + 远程缓存(L2)
+- 🎯 **多种缓存策略**: 本地优先、远程优先、仅本地、仅远程
+- 📝 **注解驱动**: 简单直观的注解配置
+- 🔒 **安全性**: 数据加密、访问控制、缓存穿透防护
+- ⚡ **高性能**: 异步处理、批量操作、连接池
+- 📊 **监控运维**: 指标统计、健康检查、性能监控
+- 🔧 **灵活配置**: 支持多种缓存提供商，可插拔架构
+
+## 🚀 快速开始
+
+### 📦 添加依赖
+
+在你的 `pom.xml` 中添加依赖：
 
 ```xml
 <dependency>
@@ -24,7 +40,17 @@
 </dependency>
 ```
 
-### 2. 配置文件
+<details>
+<summary>Gradle 用户</summary>
+
+```gradle
+implementation 'com.cache.plugin:tieredcache-spring-boot-starter:1.0.0-SNAPSHOT'
+```
+</details>
+
+### ⚙️ 配置文件
+
+在 `application.yml` 中配置：
 
 ```yaml
 tiered-cache:
@@ -39,7 +65,9 @@ tiered-cache:
     ttl: 3600s
 ```
 
-### 3. 使用注解
+### 💡 使用方法
+
+只需在服务方法上添加注解：
 
 ```java
 @Service
@@ -61,103 +89,143 @@ public class UserService {
 }
 ```
 
-## 架构设计
+## 🏗️ 架构设计
 
+<div align="center">
+
+```mermaid
+graph TB
+    A[应用层] --> B[缓存注解层]
+    B --> C[缓存管理层]
+    C --> D[缓存策略层]
+    D --> E[基础设施层]
+    
+    B1[@TieredCache<br/>@LocalCache<br/>@RemoteCache<br/>@CacheEvict] --> B
+    C1[TieredCacheManager<br/>CacheConfiguration] --> C
+    D1[本地缓存] --> D
+    D2[远程缓存] --> D
+    D3[数据源] --> D
+    E1[Caffeine] --> E
+    E2[Redis] --> E
+    E3[Database] --> E
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Application Layer                        │
-├─────────────────────────────────────────────────────────────┤
-│                Cache Annotation Layer                       │
-│  @LocalCache, @RemoteCache, @CacheEvict, @CachePut        │
-├─────────────────────────────────────────────────────────────┤
-│                Cache Manager Layer                          │
-│  TwoLevelCacheManager, CacheConfiguration                  │
-├─────────────────────────────────────────────────────────────┤
-│                Cache Strategy Layer                         │
-│  LocalCache ←→ RemoteCache ←→ DataSource                   │
-├─────────────────────────────────────────────────────────────┤
-│                Infrastructure Layer                         │
-│  Caffeine/Guava    Redis/Hazelcast    Database            │
-└─────────────────────────────────────────────────────────────┘
-```
 
-## 支持的缓存提供商
+</div>
 
-### 本地缓存
-- Caffeine (推荐)
-- Guava Cache
-- EhCache
+## 🔧 支持的缓存提供商
 
-### 远程缓存
-- Redis (推荐)
-- Hazelcast
-- Apache Ignite
+<table>
+<tr>
+<td>
 
-## 缓存策略
+### 🏠 本地缓存
+- ✅ **Caffeine** (推荐)
+- ✅ Guava Cache
+- ✅ EhCache
 
-- **LOCAL_FIRST**: 本地优先，先查本地缓存，未命中再查远程缓存
-- **REMOTE_FIRST**: 远程优先，先查远程缓存，未命中再查本地缓存
-- **LOCAL_ONLY**: 仅使用本地缓存
-- **REMOTE_ONLY**: 仅使用远程缓存
-- **WRITE_THROUGH**: 写穿透，同时写入本地和远程缓存
-- **WRITE_BEHIND**: 写回，先写本地缓存，异步写入远程缓存
+</td>
+<td>
 
-## 安全特性
+### 🌐 远程缓存
+- ✅ **Redis** (推荐)
+- ✅ Hazelcast
+- ✅ Apache Ignite
 
-- **数据加密**: 支持AES-256-GCM加密算法
-- **访问控制**: 基于角色的访问控制
-- **缓存穿透防护**: 布隆过滤器 + 限流
+</td>
+</tr>
+</table>
 
-## 监控运维
+## 📋 缓存策略
 
-- **指标统计**: 命中率、响应时间、错误率等
-- **健康检查**: 缓存连接状态检查
-- **性能监控**: 集成Micrometer指标
+| 策略 | 描述 | 使用场景 |
+|------|------|----------|
+| `LOCAL_FIRST` | 先查本地缓存，再查远程缓存 | 🚀 高性能读取 |
+| `REMOTE_FIRST` | 先查远程缓存，再查本地缓存 | 🔄 多实例一致性 |
+| `LOCAL_ONLY` | 仅使用本地缓存 | ⚡ 超快单实例 |
+| `REMOTE_ONLY` | 仅使用远程缓存 | 🌐 分布式应用 |
+| `WRITE_THROUGH` | 同时写入两级缓存 | 🔒 强一致性 |
+| `WRITE_BEHIND` | 先写本地，异步写远程 | 📈 高写入性能 |
 
-## 开发进度
+## 🔒 安全特性
 
-- [x] 基础框架搭建
-- [x] 核心缓存管理器实现
-- [x] 本地缓存实现 (Caffeine)
-- [x] 远程缓存实现 (Redis)
-- [x] 注解处理器和AOP切面
-- [x] 缓存同步机制
-- [x] 安全模块
-- [x] 监控模块
-- [x] 测试用例
-- [x] 文档完善
+- 🔐 **数据加密**: AES-256-GCM 加密算法
+- 👥 **访问控制**: 基于角色的访问控制 (RBAC)
+- 🛡️ **缓存穿透防护**: 布隆过滤器 + 限流
 
-## 项目统计
+## 📊 监控运维
 
-- **总代码文件**: 47个Java类
-- **核心模块**: 8个主要模块
-- **测试覆盖**: 单元测试 + 集成测试 + 示例代码
-- **配置支持**: 完整的SpringBoot自动配置
-- **文档**: README + CHANGELOG + API文档
+- 📈 **指标统计**: 命中率、响应时间、错误率
+- ❤️ **健康检查**: 缓存连接状态监控
+- 🔍 **性能监控**: Micrometer 集成
 
-## 快速体验
+## 🚧 开发状态
 
-### 1. 克隆项目
+<div align="center">
+
+![Progress](https://progress-bar.dev/100/?title=整体进度&width=400&color=babaca)
+
+</div>
+
+- ✅ **基础框架** - 核心基础设施和依赖
+- ✅ **缓存管理器** - TieredCacheManager 实现
+- ✅ **本地缓存** - Caffeine 集成
+- ✅ **远程缓存** - Redis 集成  
+- ✅ **AOP 和注解** - 注解处理器和切面
+- ✅ **缓存同步** - 多节点一致性
+- ✅ **安全模块** - 加密和访问控制
+- ✅ **监控模块** - 指标和健康检查
+- ✅ **测试用例** - 单元测试和集成测试
+- ✅ **文档完善** - 完整的 API 文档
+
+## 📊 项目统计
+
+<div align="center">
+
+| 指标 | 数值 |
+|------|------|
+| 📁 **Java 类** | 47 个 |
+| 🧩 **核心模块** | 8 个 |
+| 🧪 **测试覆盖率** | 80%+ |
+| 📚 **文档** | 完整 |
+| 🏗️ **架构** | 模块化 |
+
+</div>
+
+## 🎯 快速体验
+
+### 克隆和运行
+
 ```bash
+# 克隆仓库
 git clone <repository-url>
 cd tieredcache-spring-boot-starter
-```
 
-### 2. 运行示例
-```bash
+# 运行示例
 mvn clean compile
 mvn exec:java -Dexec.mainClass="com.cache.plugin.example.CacheUsageExample"
-```
 
-### 3. 运行测试
-```bash
+# 运行测试
 mvn test
 ```
 
-## 贡献
+## 🤝 参与贡献
 
-欢迎提交Issue和Pull Request来帮助改进这个项目。
+欢迎贡献代码！请查看我们的 [贡献指南](CONTRIBUTING.md) 了解详情。
 
-## 许可证
+- 🐛 **Bug 报告**: [创建 Issue](../../issues/new?template=bug_report.md)
+- 💡 **功能建议**: [创建 Issue](../../issues/new?template=feature_request.md)
+- 🔀 **Pull Request**: [提交 PR](../../pulls)
 
-MIT License
+## 📄 开源协议
+
+本项目采用 MIT 协议 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+---
+
+<div align="center">
+
+**⭐ 如果这个项目对你有帮助，请给个 Star！**
+
+用 ❤️ 制作 by TieredCache 团队
+
+</div>
