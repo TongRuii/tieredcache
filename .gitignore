@@ -148,3 +148,4 @@ dump.rdb
 
 # JVM Crash logs
 hs_err_pid*
+.kiro/
