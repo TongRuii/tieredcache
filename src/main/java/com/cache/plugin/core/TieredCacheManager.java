@@ -9,6 +9,7 @@ import com.cache.plugin.metrics.CacheMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Duration;
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 分层缓存管理器
@@ -28,6 +30,16 @@ public class TieredCacheManager {
     private final RemoteCache<String, Object> remoteCache;
     private final TieredCacheProperties properties;
     private final ExecutorService asyncExecutor;
+    
+    // 断路器相关字段
+    private final AtomicInteger remoteFailureCount = new AtomicInteger(0);
+    private static final int MAX_REMOTE_FAILURES = 5;
+    private volatile boolean remoteCircuitOpen = false;
+    
+    // 性能监控相关字段
+    private final AtomicInteger totalRequests = new AtomicInteger(0);
+    private final AtomicInteger totalHits = new AtomicInteger(0);
+    private static final double HIT_RATE_THRESHOLD = 0.8;
     
     @Autowired(required = false)
     private CacheMetrics metrics;
@@ -54,6 +66,12 @@ public class TieredCacheManager {
     @SuppressWarnings("unchecked")
     public <T> T get(String key, Class<T> type, CacheStrategy strategy) {
         try {
+            // 当远程缓存不可用时，自动降级到本地策略
+            if (remoteCache == null && 
+                (strategy == CacheStrategy.REMOTE_FIRST || strategy == CacheStrategy.REMOTE_ONLY)) {
+                strategy = CacheStrategy.LOCAL_FIRST;
+            }
+            
             switch (strategy) {
                 case LOCAL_FIRST:
                     return getWithLocalFirst(key, type);
@@ -85,13 +103,27 @@ public class TieredCacheManager {
             return (T) value;
         }
         
-        // 2. 查远程缓存
-        value = remoteCache.get(key);
-        if (value != null) {
-            // 异步回写到本地缓存
-            asyncPutToLocal(key, value);
-            recordRemoteHit();
-            return (T) value;
+        // 2. 检查断路器状态
+        if (!remoteCircuitOpen && remoteCache != null) {
+            try {
+                value = remoteCache.get(key);
+                if (value != null) {
+                    // 成功时重置失败计数
+                    remoteFailureCount.set(0);
+                    // 异步回写到本地缓存
+                    asyncPutToLocal(key, value);
+                    recordRemoteHit();
+                    return (T) value;
+                }
+            } catch (Exception e) {
+                // 记录失败并检查是否需要打开断路器
+                int failureCount = remoteFailureCount.incrementAndGet();
+                if (failureCount >= MAX_REMOTE_FAILURES) {
+                    remoteCircuitOpen = true;
+                    logger.warn("Remote cache circuit opened due to repeated failures");
+                }
+                logger.warn("Failed to get from remote cache, falling back to method execution", e);
+            }
         }
         
         recordMiss();
@@ -103,17 +135,31 @@ public class TieredCacheManager {
      */
     @SuppressWarnings("unchecked")
     private <T> T getWithRemoteFirst(String key, Class<T> type) {
-        // 1. 先查远程缓存
-        Object value = remoteCache.get(key);
-        if (value != null) {
-            // 异步回写到本地缓存
-            asyncPutToLocal(key, value);
-            recordRemoteHit();
-            return (T) value;
+        // 1. 检查断路器状态
+        if (!remoteCircuitOpen && remoteCache != null) {
+            try {
+                Object value = remoteCache.get(key);
+                if (value != null) {
+                    // 成功时重置失败计数
+                    remoteFailureCount.set(0);
+                    // 异步回写到本地缓存
+                    asyncPutToLocal(key, value);
+                    recordRemoteHit();
+                    return (T) value;
+                }
+            } catch (Exception e) {
+                // 记录失败并检查是否需要打开断路器
+                int failureCount = remoteFailureCount.incrementAndGet();
+                if (failureCount >= MAX_REMOTE_FAILURES) {
+                    remoteCircuitOpen = true;
+                    logger.warn("Remote cache circuit opened due to repeated failures");
+                }
+                logger.warn("Failed to get from remote cache", e);
+            }
         }
         
         // 2. 查本地缓存
-        value = localCache.get(key);
+        Object value = localCache.get(key);
         if (value != null) {
             recordLocalHit();
             return (T) value;
@@ -142,11 +188,36 @@ public class TieredCacheManager {
      */
     @SuppressWarnings("unchecked")
     private <T> T getFromRemote(String key, Class<T> type) {
-        Object value = remoteCache.get(key);
-        if (value != null) {
-            recordRemoteHit();
-            return (T) value;
+        // 当远程缓存不可用时直接返回null
+        if (remoteCache == null) {
+            recordMiss();
+            return null;
         }
+        
+        // 检查断路器状态
+        if (remoteCircuitOpen) {
+            recordMiss();
+            return null;
+        }
+        
+        try {
+            Object value = remoteCache.get(key);
+            if (value != null) {
+                // 成功时重置失败计数
+                remoteFailureCount.set(0);
+                recordRemoteHit();
+                return (T) value;
+            }
+        } catch (Exception e) {
+            // 记录失败并检查是否需要打开断路器
+            int failureCount = remoteFailureCount.incrementAndGet();
+            if (failureCount >= MAX_REMOTE_FAILURES) {
+                remoteCircuitOpen = true;
+                logger.warn("Remote cache circuit opened due to repeated failures");
+            }
+            logger.error("Failed to get from remote cache", e);
+        }
+        
         recordMiss();
         return null;
     }
@@ -160,24 +231,35 @@ public class TieredCacheManager {
                 case LOCAL_FIRST:
                 case LOCAL_ONLY:
                     putToLocal(key, value);
-                    if (strategy == CacheStrategy.LOCAL_FIRST) {
+                    // 只有当远程缓存存在时才尝试异步写入
+                    if (strategy == CacheStrategy.LOCAL_FIRST && remoteCache != null) {
                         asyncPutToRemote(key, value, ttl);
                     }
                     break;
                 case REMOTE_FIRST:
                 case REMOTE_ONLY:
-                    putToRemote(key, value, ttl);
-                    if (strategy == CacheStrategy.REMOTE_FIRST) {
-                        asyncPutToLocal(key, value);
+                    // 只有当远程缓存存在时才尝试写入
+                    if (remoteCache != null) {
+                        putToRemote(key, value, ttl);
+                        if (strategy == CacheStrategy.REMOTE_FIRST) {
+                            asyncPutToLocal(key, value);
+                        }
+                    } else {
+                        // 远程缓存不存在时降级到本地缓存
+                        putToLocal(key, value);
                     }
                     break;
                 case WRITE_THROUGH:
                     putToLocal(key, value);
-                    putToRemote(key, value, ttl);
+                    if (remoteCache != null) {
+                        putToRemote(key, value, ttl);
+                    }
                     break;
                 case WRITE_BEHIND:
                     putToLocal(key, value);
-                    asyncPutToRemote(key, value, ttl);
+                    if (remoteCache != null) {
+                        asyncPutToRemote(key, value, ttl);
+                    }
                     break;
             }
         } catch (Exception e) {
@@ -196,11 +278,15 @@ public class TieredCacheManager {
                     localCache.evict(key);
                     break;
                 case REMOTE_ONLY:
-                    remoteCache.evict(key);
+                    if (remoteCache != null) {
+                        remoteCache.evict(key);
+                    }
                     break;
                 default:
                     localCache.evict(key);
-                    remoteCache.evict(key);
+                    if (remoteCache != null) {
+                        remoteCache.evict(key);
+                    }
                     break;
             }
         } catch (Exception e) {
@@ -215,7 +301,9 @@ public class TieredCacheManager {
     public void clear() {
         try {
             localCache.clear();
-            remoteCache.clear();
+            if (remoteCache != null) {
+                remoteCache.clear();
+            }
         } catch (Exception e) {
             logger.error("Failed to clear cache", e);
             throw new CacheException("Failed to clear cache", e);
@@ -241,11 +329,15 @@ public class TieredCacheManager {
                     localCache.multiPut(keyValues);
                     break;
                 case REMOTE_ONLY:
-                    remoteCache.multiPut(keyValues);
+                    if (remoteCache != null) {
+                        remoteCache.multiPut(keyValues);
+                    }
                     break;
                 default:
                     localCache.multiPut(keyValues);
-                    remoteCache.multiPut(keyValues);
+                    if (remoteCache != null) {
+                        remoteCache.multiPut(keyValues);
+                    }
                     break;
             }
         } catch (Exception e) {
@@ -298,26 +390,63 @@ public class TieredCacheManager {
      * 记录本地缓存命中
      */
     private void recordLocalHit() {
+        int hits = totalHits.incrementAndGet();
+        int requests = totalRequests.incrementAndGet();
+        
         if (metrics != null) {
             metrics.recordLocalHit();
         }
+        
+        // 检查命中率是否过低
+        checkHitRate(requests, hits);
     }
     
     /**
      * 记录远程缓存命中
      */
     private void recordRemoteHit() {
+        int hits = totalHits.incrementAndGet();
+        int requests = totalRequests.incrementAndGet();
+        
         if (metrics != null) {
             metrics.recordRemoteHit();
         }
+        
+        checkHitRate(requests, hits);
     }
     
     /**
      * 记录缓存未命中
      */
     private void recordMiss() {
+        totalRequests.incrementAndGet();
+        
         if (metrics != null) {
             metrics.recordMiss();
+        }
+    }
+    
+    /**
+     * 检查命中率
+     */
+    private void checkHitRate(int totalRequests, int totalHits) {
+        if (totalRequests > 100) { // 至少100个请求后才检查
+            double hitRate = (double) totalHits / totalRequests;
+            if (hitRate < HIT_RATE_THRESHOLD) {
+                logger.warn("Cache hit rate is low: {:.2%}, below threshold: {:.2%}", hitRate, HIT_RATE_THRESHOLD);
+            }
+        }
+    }
+    
+    /**
+     * 定期检查断路器状态
+     */
+    @Scheduled(fixedRate = 60000) // 每分钟检查一次
+    public void checkCircuitStatus() {
+        if (remoteCircuitOpen) {
+            remoteCircuitOpen = false;
+            remoteFailureCount.set(0);
+            logger.info("Remote cache circuit reset for retry");
         }
     }
     

@@ -51,12 +51,13 @@ public class CacheSyncManager {
     
     @PostConstruct
     public void initialize() {
-        if (syncProperties.isEnabled()) {
+        // 只有当同步启用且远程缓存存在时才初始化同步功能
+        if (syncProperties.isEnabled() && remoteCache != null) {
             subscribeToSyncChannel();
             startPeriodicSync();
             logger.info("Cache sync manager initialized with channel: {}", syncProperties.getChannel());
         } else {
-            logger.info("Cache sync is disabled");
+            logger.info("Cache sync is disabled or remote cache not available");
         }
     }
     
@@ -81,14 +82,17 @@ public class CacheSyncManager {
      */
     private void subscribeToSyncChannel() {
         try {
-            remoteCache.subscribe(syncProperties.getChannel(), (channel, message) -> {
-                try {
-                    handleSyncMessage(message);
-                } catch (Exception e) {
-                    logger.error("Failed to handle sync message from channel: {}", channel, e);
-                }
-            });
-            logger.info("Subscribed to sync channel: {}", syncProperties.getChannel());
+            // 确保远程缓存不为空
+            if (remoteCache != null) {
+                remoteCache.subscribe(syncProperties.getChannel(), (channel, message) -> {
+                    try {
+                        handleSyncMessage(message);
+                    } catch (Exception e) {
+                        logger.error("Failed to handle sync message from channel: {}", channel, e);
+                    }
+                });
+                logger.info("Subscribed to sync channel: {}", syncProperties.getChannel());
+            }
         } catch (Exception e) {
             logger.error("Failed to subscribe to sync channel: {}", syncProperties.getChannel(), e);
         }
@@ -161,7 +165,7 @@ public class CacheSyncManager {
      * 发布缓存更新事件
      */
     public void publishCacheUpdate(String key, Object value) {
-        if (!syncProperties.isEnabled()) {
+        if (!syncProperties.isEnabled() || remoteCache == null) {
             return;
         }
         
@@ -183,7 +187,7 @@ public class CacheSyncManager {
      * 发布缓存清除事件
      */
     public void publishCacheEvict(String key) {
-        if (!syncProperties.isEnabled()) {
+        if (!syncProperties.isEnabled() || remoteCache == null) {
             return;
         }
         
@@ -205,7 +209,7 @@ public class CacheSyncManager {
      * 发布缓存清空事件
      */
     public void publishCacheClear() {
-        if (!syncProperties.isEnabled()) {
+        if (!syncProperties.isEnabled() || remoteCache == null) {
             return;
         }
         
@@ -227,6 +231,12 @@ public class CacheSyncManager {
      * 发布同步事件
      */
     private void publishSyncEvent(CacheSyncEvent event) {
+        // 确保远程缓存不为空
+        if (remoteCache == null) {
+            logger.warn("Remote cache is not available, cannot publish sync event");
+            return;
+        }
+        
         try {
             String message = objectMapper.writeValueAsString(event);
             remoteCache.publish(syncProperties.getChannel(), message);
@@ -269,8 +279,10 @@ public class CacheSyncManager {
             // 来自远程的更新，同步到本地缓存
             localCache.put(event.getKey(), event.getValue());
         } else {
-            // 本地更新，发布到远程
-            publishCacheUpdate(event.getKey(), event.getValue());
+            // 本地更新，发布到远程（仅当远程缓存可用时）
+            if (remoteCache != null) {
+                publishCacheUpdate(event.getKey(), event.getValue());
+            }
         }
     }
     
@@ -287,11 +299,13 @@ public class CacheSyncManager {
                 localCache.evict(event.getKey());
             }
         } else {
-            // 本地清除，发布到远程
-            if (event.isAllEntries()) {
-                publishCacheClear();
-            } else {
-                publishCacheEvict(event.getKey());
+            // 本地清除，发布到远程（仅当远程缓存可用时）
+            if (remoteCache != null) {
+                if (event.isAllEntries()) {
+                    publishCacheClear();
+                } else {
+                    publishCacheEvict(event.getKey());
+                }
             }
         }
     }

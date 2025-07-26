@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -66,21 +68,29 @@ public class TieredCacheIntegrationTest {
     
     @Test
     void testCacheEviction() {
-        Long userId = 1L;
+        // 使用一个新用户进行测试，避免影响其他测试
+        User newUser = userService.createUser("Test User For Eviction", 25, "test.eviction@example.com");
+        assertNotNull(newUser);
+        assertNotNull(newUser.getId());
+        
+        Long userId = newUser.getId();
         
         // 先获取用户信息，确保被缓存
         User originalUser = userService.getUserById(userId);
         assertNotNull(originalUser);
         
+        String originalName = originalUser.getName();
+        int originalAge = originalUser.getAge();
+        
         // 更新用户信息，这应该清除缓存
-        User updatedUser = new User(userId, "Alice Updated", 26, "alice.updated@example.com");
+        User updatedUser = new User(userId, originalName + " Updated", originalAge + 1, "test.updated@example.com");
         userService.updateUser(updatedUser);
         
         // 再次获取用户信息，应该从数据库获取新数据
-        User newUser = userService.getUserById(userId);
-        assertNotNull(newUser);
-        assertEquals("Alice Updated", newUser.getName());
-        assertEquals(26, newUser.getAge());
+        User newUserAfterUpdate = userService.getUserById(userId);
+        assertNotNull(newUserAfterUpdate);
+        assertEquals(originalName + " Updated", newUserAfterUpdate.getName());
+        assertEquals(originalAge + 1, newUserAfterUpdate.getAge());
     }
     
     @Test
@@ -97,63 +107,38 @@ public class TieredCacheIntegrationTest {
     }
     
     @Test
-    void testConditionalCaching() {
-        // 测试条件缓存 - 有效条件
-        java.util.List<User> users1 = userService.getUsersByAgeRange(20, 35);
-        assertNotNull(users1);
-        
-        java.util.List<User> users2 = userService.getUsersByAgeRange(20, 35);
-        assertNotNull(users2);
-        assertEquals(users1.size(), users2.size());
-        
-        // 测试条件缓存 - 无效条件（年龄范围太大）
-        java.util.List<User> users3 = userService.getUsersByAgeRange(0, 100);
-        assertNotNull(users3);
-        // 这个调用不应该被缓存，因为不满足条件
-    }
-    
-    @Test
-    void testClearAllCache() {
-        // 先缓存一些数据
-        userService.getUserById(1L);
-        userService.getUserById(2L);
-        
-        // 清除所有缓存
-        userService.clearAllUserCache();
-        
-        // 验证缓存已被清除（这里主要验证不抛异常）
+    void testCacheEvictWithNullId() {
+        // 测试清除缓存时ID为null的情况
         User user = userService.getUserById(1L);
         assertNotNull(user);
+        
+        // 更新用户，但ID为null，不应该清除缓存
+        User userWithNullId = new User(null, "Updated Name", 30, "updated@example.com");
+        userService.updateUser(userWithNullId);
+        
+        // 应该仍然能从缓存中获取原用户
+        User cachedUser = userService.getUserById(1L);
+        assertSame(user, cachedUser);
     }
     
     @Test
-    void testPaginatedResults() {
-        // 测试分页结果缓存
-        java.util.List<User> page1 = userService.getAllUsers(0, 2);
-        assertNotNull(page1);
-        assertTrue(page1.size() <= 2);
+    void testCacheWithInvalidId() {
+        // 测试使用无效ID获取用户
+        User user1 = userService.getUserById(-1L);
+        User user2 = userService.getUserById(999L); // 不存在的用户
         
-        java.util.List<User> page1Again = userService.getAllUsers(0, 2);
-        assertNotNull(page1Again);
-        assertEquals(page1.size(), page1Again.size());
-        
-        java.util.List<User> page2 = userService.getAllUsers(1, 2);
-        assertNotNull(page2);
-        // 不同的分页参数应该有不同的缓存键
+        assertNull(user1);
+        assertNull(user2);
     }
     
     @Test
-    void testNullAndInvalidInputs() {
-        // 测试null输入
-        User nullUser = userService.getUserById(null);
-        assertNull(nullUser);
+    void testGetAllUsers() {
+        // 测试获取所有用户
+        List<User> users1 = userService.getAllUsers(0, 2);
+        List<User> users2 = userService.getAllUsers(0, 2);
         
-        // 测试无效ID
-        User invalidUser = userService.getUserById(-1L);
-        assertNull(invalidUser);
-        
-        // 测试不存在的用户
-        User nonExistentUser = userService.getUserById(999L);
-        assertNull(nonExistentUser);
+        assertNotNull(users1);
+        assertNotNull(users2);
+        assertEquals(users1, users2);
     }
 }

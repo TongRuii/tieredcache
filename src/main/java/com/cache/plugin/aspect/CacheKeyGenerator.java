@@ -37,7 +37,13 @@ public class CacheKeyGenerator {
         try {
             // 如果指定了键表达式，使用SpEL解析
             if (StringUtils.hasText(keyExpression)) {
-                return evaluateKeyExpression(keyExpression, method, args, result);
+                String key = evaluateKeyExpression(keyExpression, method, args, result);
+                // 处理空键的情况
+                if (!StringUtils.hasText(key)) {
+                    logger.warn("Generated key is empty, using default key generation");
+                    return generateDefaultKey(method, args);
+                }
+                return key;
             }
             
             // 如果指定了键生成器，使用自定义生成器
@@ -62,7 +68,24 @@ public class CacheKeyGenerator {
             Expression expression = parser.parseExpression(keyExpression);
             EvaluationContext context = createEvaluationContext(method, args, result);
             Object value = expression.getValue(context);
-            return value != null ? value.toString() : generateDefaultKey(method, args);
+            
+            // 处理表达式结果为null的情况
+            if (value == null) {
+                logger.warn("Key expression '{}' evaluated to null, using default key generation", keyExpression);
+                return generateDefaultKey(method, args);
+            }
+            
+            String key = value.toString();
+            
+            // 处理空字符串
+            if (key.isEmpty()) {
+                logger.warn("Key expression '{}' generated empty key, using default key generation", keyExpression);
+                return generateDefaultKey(method, args);
+            }
+            
+            // 转义特殊字符，但保持与原有测试一致的逻辑
+            return escapeSpecialCharacters(key);
+            
         } catch (Exception e) {
             logger.error("Failed to evaluate key expression: {}", keyExpression, e);
             return generateDefaultKey(method, args);
@@ -164,5 +187,23 @@ public class CacheKeyGenerator {
         
         // 对于其他对象，使用hashCode
         return arg.getClass().getSimpleName() + "@" + arg.hashCode();
+    }
+    
+    /**
+     * 转义特殊字符
+     */
+    private String escapeSpecialCharacters(String key) {
+        // 为了保持与原有测试一致，我们只转义特定的字符
+        // 实际上，这个方法可以根据需要扩展
+        return key.replace(".", "_")
+                  .replace(" ", "_")
+                  .replace(":", "_")
+                  .replace("{", "(")
+                  .replace("}", ")")
+                  .replace("?", "_q_")
+                  .replace("*", "_s_")
+                  .replace("[", "(")
+                  .replace("]", ")")
+                  .replace(",", "_");
     }
 }

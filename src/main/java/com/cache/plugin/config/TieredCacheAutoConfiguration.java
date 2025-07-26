@@ -47,7 +47,7 @@ public class TieredCacheAutoConfiguration {
      * 远程缓存配置
      */
     @Configuration
-    @ConditionalOnProperty(prefix = "tiered-cache.remote", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "tiered-cache.remote", name = "enabled", havingValue = "true")
     @ConditionalOnClass(RedisTemplate.class)
     static class RemoteCacheConfiguration {
         
@@ -55,7 +55,11 @@ public class TieredCacheAutoConfiguration {
         @ConditionalOnMissingBean
         public RemoteCache<String, Object> remoteCache(TieredCacheProperties properties,
                                                        RedisTemplate<String, Object> redisTemplate) {
-            return new RedisRemoteCache(properties.getRemote(), redisTemplate);
+            // 只有当远程缓存启用时才创建远程缓存实例
+            if (properties.getRemote().isEnabled()) {
+                return new RedisRemoteCache(properties.getRemote(), redisTemplate);
+            }
+            return null;
         }
     }
     
@@ -99,8 +103,12 @@ public class TieredCacheAutoConfiguration {
     @ConditionalOnProperty(prefix = "tiered-cache.sync", name = "enabled", havingValue = "true", matchIfMissing = true)
     public CacheSyncManager cacheSyncManager(
             LocalCache<String, Object> localCache,
-            RemoteCache<String, Object> remoteCache,
+            @Autowired(required = false) RemoteCache<String, Object> remoteCache,
             TieredCacheProperties properties) {
-        return new CacheSyncManager(localCache, remoteCache, properties.getSync());
+        // 只有当同步启用且远程缓存存在时才创建同步管理器
+        if (properties.getSync().isEnabled() && remoteCache != null) {
+            return new CacheSyncManager(localCache, remoteCache, properties.getSync());
+        }
+        return null;
     }
 }

@@ -1,7 +1,12 @@
 package com.cache.plugin.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.validation.annotation.Validated;
 
+import javax.annotation.PostConstruct;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -9,8 +14,12 @@ import java.util.Map;
 /**
  * 分层缓存配置属性
  */
+@Configuration
 @ConfigurationProperties(prefix = "tiered-cache")
+@Validated
 public class TieredCacheProperties {
+    
+    private static final Logger logger = LoggerFactory.getLogger(TieredCacheProperties.class);
     
     /**
      * 是否启用分层缓存
@@ -46,6 +55,65 @@ public class TieredCacheProperties {
      * 监控配置
      */
     private MonitoringProperties monitoring = new MonitoringProperties();
+    
+    @PostConstruct
+    public void validateAndAdjust() {
+        // 验证本地缓存配置
+        if (local.getMaxSize() <= 0) {
+            logger.warn("Local cache max size is invalid: {}, using default value: 10000", local.getMaxSize());
+            local.setMaxSize(10000L);
+        }
+        
+        if (local.getExpireAfterWrite() != null && local.getExpireAfterWrite().getSeconds() <= 0) {
+            logger.warn("Local cache expireAfterWrite is invalid: {}, disabling expiration", local.getExpireAfterWrite());
+            local.setExpireAfterWrite(null);
+        }
+        
+        if (local.getExpireAfterAccess() != null && local.getExpireAfterAccess().getSeconds() <= 0) {
+            logger.warn("Local cache expireAfterAccess is invalid: {}, disabling expiration", local.getExpireAfterAccess());
+            local.setExpireAfterAccess(null);
+        }
+        
+        if (local.getInitialCapacity() <= 0) {
+            logger.warn("Local cache initial capacity is invalid: {}, using default value: 100", local.getInitialCapacity());
+            local.setInitialCapacity(100);
+        }
+        
+        // 验证远程缓存配置
+        if (remote.getTtl() != null && remote.getTtl().getSeconds() <= 0) {
+            logger.warn("Remote cache TTL is invalid: {}, using default value: 3600s", remote.getTtl().getSeconds());
+            remote.setTtl(Duration.ofHours(1));
+        }
+        
+        if (remote.getTimeout() != null && remote.getTimeout().getSeconds() <= 0) {
+            logger.warn("Remote cache timeout is invalid: {}, using default value: 5s", remote.getTimeout().getSeconds());
+            remote.setTimeout(Duration.ofSeconds(5));
+        }
+        
+        // 验证连接池配置
+        if (remote.getPool().getMaxActive() <= 0) {
+            logger.warn("Remote cache pool maxActive is invalid: {}, using default value: 8", remote.getPool().getMaxActive());
+            remote.getPool().setMaxActive(8);
+        }
+        
+        if (remote.getPool().getMaxIdle() <= 0) {
+            logger.warn("Remote cache pool maxIdle is invalid: {}, using default value: 8", remote.getPool().getMaxIdle());
+            remote.getPool().setMaxIdle(8);
+        }
+        
+        // 验证同步配置
+        if (sync.getBatchSize() <= 0) {
+            logger.warn("Sync batch size is invalid: {}, using default value: 100", sync.getBatchSize());
+            sync.setBatchSize(100);
+        }
+        
+        if (sync.getFlushInterval() != null && sync.getFlushInterval().toMillis() <= 0) {
+            logger.warn("Sync flush interval is invalid: {}, using default value: 1s", sync.getFlushInterval());
+            sync.setFlushInterval(Duration.ofSeconds(1));
+        }
+        
+        logger.info("TieredCache configuration validated and adjusted");
+    }
     
     // Getters and Setters
     public boolean isEnabled() {
@@ -169,6 +237,7 @@ public class TieredCacheProperties {
      * 远程缓存配置
      */
     public static class RemoteCacheProperties {
+        private boolean enabled = true;
         private String provider = "redis";
         private Duration ttl = Duration.ofHours(1);
         private String clusterNodes = "localhost:6379";
@@ -178,6 +247,14 @@ public class TieredCacheProperties {
         private PoolProperties pool = new PoolProperties();
         
         // Getters and Setters
+        public boolean isEnabled() {
+            return enabled;
+        }
+        
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+        
         public String getProvider() {
             return provider;
         }

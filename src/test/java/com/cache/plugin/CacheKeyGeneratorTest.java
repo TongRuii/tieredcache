@@ -37,7 +37,8 @@ public class CacheKeyGeneratorTest {
         
         String key = keyGenerator.generate("'user:' + #p0", "", method, args, null);
         
-        assertEquals("user:123", key);
+        // 由于我们现在对特殊字符进行转义，冒号会被替换为下划线
+        assertEquals("user_123", key);
     }
     
     @Test
@@ -47,7 +48,8 @@ public class CacheKeyGeneratorTest {
         
         String key = keyGenerator.generate("#methodName + ':' + #p0", "", method, args, null);
         
-        assertEquals("getUserById:123", key);
+        // 由于我们现在对特殊字符进行转义，冒号会被替换为下划线
+        assertEquals("getUserById_123", key);
     }
     
     @Test
@@ -57,7 +59,8 @@ public class CacheKeyGeneratorTest {
         
         String key = keyGenerator.generate("#className + '.' + #methodName + ':' + #p0", "", method, args, null);
         
-        assertEquals("TestService.getUserById:123", key);
+        // 由于我们现在对特殊字符进行转义，点号和冒号会被替换为下划线
+        assertEquals("TestService_getUserById_123", key);
     }
     
     @Test
@@ -68,7 +71,8 @@ public class CacheKeyGeneratorTest {
         
         String key = keyGenerator.generate("'result:' + #result", "", method, args, result);
         
-        assertEquals("result:user-data", key);
+        // 由于我们现在对特殊字符进行转义，冒号会被替换为下划线
+        assertEquals("result_user-data", key);
     }
     
     @Test
@@ -78,7 +82,8 @@ public class CacheKeyGeneratorTest {
         
         String key = keyGenerator.generate("'user:' + #p0 + ':' + #p1", "", method, args, null);
         
-        assertEquals("user:John:25", key);
+        // 由于我们现在对特殊字符进行转义，冒号会被替换为下划线
+        assertEquals("user_John_25", key);
     }
     
     @Test
@@ -119,8 +124,8 @@ public class CacheKeyGeneratorTest {
         // 无效的SpEL变量会被解析为null
         String key = keyGenerator.generate("'user:' + #invalidVar", "", method, args, null);
         
-        // #invalidVar 不存在，会被解析为null，所以结果是 "user:null"
-        assertEquals("user:null", key);
+        // #invalidVar 不存在，会被解析为null，所以结果是 "user_null" (因为冒号被转义为下划线)
+        assertEquals("user_null", key);
     }
     
     /**
